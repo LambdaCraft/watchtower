@@ -192,7 +192,7 @@ public class DatabaseManager implements Runnable {
     RegistryUpdate(Identifier id) { this.id = id; }
 
     public PreparedBatch prepareBatch(Handle handle) {
-      return handle.prepareBatch("INSERT INTO registry (name) SELECT :name WHERE NOT EXISTS (SELECT 1 FROM registry WHERE name=:name)");
+      return handle.prepareBatch("INSERT IGNORE INTO registry (name) VALUES (:name)");
     }
 
     public PreparedBatch addBindings(PreparedBatch batch) {
