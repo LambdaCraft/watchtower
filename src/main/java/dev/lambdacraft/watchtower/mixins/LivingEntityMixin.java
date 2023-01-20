@@ -6,7 +6,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import dev.lambdacraft.watchtower.DatabaseManager;
 import net.minecraft.entity.Entity;
@@ -31,12 +30,12 @@ public abstract class LivingEntityMixin extends Entity {
     if (me.getCustomName() == null) return;
 
     UUID killerid = null;
-    if (attacker != null && attacker instanceof PlayerEntity) {
-      killerid = ((PlayerEntity)attacker).getUuid();
+    if (attacker instanceof PlayerEntity) {
+      killerid = attacker.getUuid();
     }
 
     DatabaseManager.getSingleton().queueOp(new DatabaseManager.EntityKillUpdate(
-      me.getCustomName().asString(),
+      me.getCustomName().getString(),
       source.getName(),
       killerid,
       DatabaseManager.getTime(),

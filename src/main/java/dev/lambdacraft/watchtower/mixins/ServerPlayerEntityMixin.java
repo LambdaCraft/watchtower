@@ -5,6 +5,9 @@ import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
 
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.encryption.PlayerPublicKey;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,7 +18,6 @@ import dev.lambdacraft.watchtower.ItemUtils;
 
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.screen.NamedScreenHandlerFactory;
@@ -28,8 +30,8 @@ import net.minecraft.world.World;
 
 @Mixin(ServerPlayerEntity.class)
 public abstract class ServerPlayerEntityMixin extends PlayerEntity {
-  public ServerPlayerEntityMixin(World world, BlockPos pos, float yaw, GameProfile profile) {
-    super(world, pos, yaw, profile);
+  public ServerPlayerEntityMixin(World world, BlockPos pos, float yaw, GameProfile gameProfile, @Nullable PlayerPublicKey publicKey) {
+    super(world, pos, yaw, gameProfile, publicKey);
   }
 
   @Inject(at = @At(value = "RETURN", ordinal = 2), method = "openHandledScreen")
@@ -38,15 +40,21 @@ public abstract class ServerPlayerEntityMixin extends PlayerEntity {
     CallbackInfoReturnable<OptionalInt> info
   ) {
       if (nameableContainerFactory instanceof LockableContainerBlockEntity && !(nameableContainerFactory instanceof ChestBlockEntity)) {
-        BlockEntity be = (BlockEntity) nameableContainerFactory;
+        LockableContainerBlockEntity be = (LockableContainerBlockEntity) nameableContainerFactory;
         UUID uuid = ((IWatchTowerId)be).getWatchTowerId();
         ((IWatchTowerId)this.currentScreenHandler).setWatchTowerId(uuid);
 
         Identifier blockId = Registry.BLOCK.getId(be.getCachedState().getBlock());
+
+        ItemStack[] before = new ItemStack[be.size()];
+        for (int i = 0; i < be.size(); i++) {
+          before[i] = be.getStack(i).copy();
+        }
+
         DatabaseManager.getSingleton().queueOp(new DatabaseManager.ContainerUpdate(
           uuid, blockId, be.getPos(), this.getUuid(), DatabaseManager.getTime(), null
         ));
-        ItemUtils.registerContentListener(this.currentScreenHandler);
+        ItemUtils.registerContentListener(this.currentScreenHandler, before);
       }
   }
 }

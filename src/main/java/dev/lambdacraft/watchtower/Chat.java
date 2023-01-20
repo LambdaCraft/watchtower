@@ -7,8 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.LiteralText;
+import net.minecraft.text.LiteralTextContent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.MutableText;
@@ -22,7 +21,7 @@ import static net.minecraft.util.Formatting.*;
  * Utility class to make sending chat messages easier
  */
 public class Chat {
-  private static final HashMap<Class, Formatting> textColorMap;
+  private static final HashMap<Class<?>, Formatting> textColorMap;
   private static final DateTimeFormatter dtf;
   private static final ZoneId zoneId;
 
@@ -35,19 +34,19 @@ public class Chat {
     zoneId = ZoneId.of("UTC");
   }
   public static void send(PlayerEntity p, String s) {
-    ((ServerPlayerEntity) p).sendMessage(new LiteralText(s), false);
+    p.sendMessage(text(s), false);
   }
 
   public static void send(PlayerEntity p, Text text) {
-    ((ServerPlayerEntity) p).sendMessage(text, false);
+    p.sendMessage(text, false);
   }
 
   public static void send(PlayerEntity p, MutableText... texts) {
-    ((ServerPlayerEntity) p).sendMessage(joinText(texts), false);
+    p.sendMessage(joinText(texts), false);
   }
 
-  public static LiteralText text(String s) {
-    return new LiteralText(s);
+  public static MutableText text(String s) {
+    return MutableText.of(new LiteralTextContent(s));
   }
 
   public static MutableText format(MutableText t, Formatting f) {
@@ -66,9 +65,9 @@ public class Chat {
   }
 
   public static MutableText joinText(MutableText... texts) {
-    MutableText out = new LiteralText("");
-    for (int i = 0; i < texts.length; i++) {
-      out.append(" ").append(texts[i]);
+    MutableText out = text("");
+    for (MutableText text : texts) {
+      out.append(" ").append(text);
     }
     return out;
   }

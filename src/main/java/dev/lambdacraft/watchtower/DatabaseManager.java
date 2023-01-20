@@ -3,7 +3,6 @@ package dev.lambdacraft.watchtower;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -136,7 +135,7 @@ public class DatabaseManager implements Runnable {
 
   public void createTables() throws IOException {
     URL url = DatabaseManager.class.getResource("/data/watchtower/tables.sql");
-    String tableSql = Resources.toString(url,  StandardCharsets.UTF_8);
+    String tableSql = Resources.toString(url, StandardCharsets.UTF_8);
     jdbi.useHandle(handle -> {
       handle.createScript(tableSql).execute();
       // handle.execute("CREATE FUNCTION BIN_TO_UUID(b BINARY(16), f BOOLEAN) RETURNS CHAR(36) DETERMINISTIC BEGIN DECLARE hexStr CHAR(32); SET hexStr = HEX(b); RETURN LOWER(CONCAT(IF(f,SUBSTR(hexStr, 9, 8),SUBSTR(hexStr, 1, 8)), '-', IF(f,SUBSTR(hexStr, 5, 4),SUBSTR(hexStr, 9, 4)), '-', IF(f,SUBSTR(hexStr, 1, 4),SUBSTR(hexStr, 13, 4)), '-', SUBSTR(hexStr, 17, 4), '-', SUBSTR(hexStr, 21))); END;");
@@ -202,21 +201,21 @@ public class DatabaseManager implements Runnable {
   }
 
   public static class BlockUpdate extends QueueOperation {
-    private String date;
-    private boolean placed;
-    private BlockPos pos;
-    private UUID playerid;
-    private Identifier blockid;
-    private Identifier dimensionid;
+    private final String date;
+    private final boolean placed;
+    private final BlockPos pos;
+    private final UUID playerId;
+    private final Identifier blockId;
+    private final Identifier dimensionId;
     public int getPriority() { return 2; }
 
-    public BlockUpdate(UUID playerid, Identifier blockid, boolean placed, BlockPos pos, Identifier dimensionid) {
+    public BlockUpdate(UUID playerId, Identifier blockId, boolean placed, BlockPos pos, Identifier dimensionId) {
       this.date = DatabaseManager.getTime();
       this.placed = placed;
       this.pos = pos;
-      this.playerid = playerid;
-      this.blockid = blockid;
-      this.dimensionid = dimensionid;
+      this.playerId = playerId;
+      this.blockId = blockId;
+      this.dimensionId = dimensionId;
     }
 
     public PreparedBatch prepareBatch(Handle handle) {
@@ -234,25 +233,25 @@ public class DatabaseManager implements Runnable {
         .bind("date", date)
         .bind("placed", placed)
         .bind("x", pos.getX()).bind("y", pos.getY()).bind("z", pos.getZ())
-        .bind("playeruuid", playerid.toString())
-        .bind("blockid", blockid.toString())
-        .bind("dimensionid", dimensionid.toString())
+        .bind("playeruuid", playerId.toString())
+        .bind("blockid", blockId.toString())
+        .bind("dimensionid", dimensionId.toString())
         .add();
     }
   }
 
   public static class ContainerUpdate extends QueueOperation {
-    private UUID uuid;
-    private String lastaccess;
-    private BlockPos pos;
-    private UUID accessingPlayer;
-    private Identifier blockId;
+    private final UUID uuid;
+    private final String lastAccess;
+    private final BlockPos pos;
+    private final UUID accessingPlayer;
+    private final Identifier blockId;
     private Identifier dimension;
     public int getPriority() { return 2; }
 
-    public ContainerUpdate(UUID uuid, Identifier blockId, BlockPos pos, UUID accessingPlayer, String lastaccess, Identifier dimension) {
+    public ContainerUpdate(UUID uuid, Identifier blockId, BlockPos pos, UUID accessingPlayer, String lastAccess, Identifier dimension) {
       this.uuid = uuid;
-      this.lastaccess = lastaccess;
+      this.lastAccess = lastAccess;
       this.pos = pos;
       this.accessingPlayer = accessingPlayer;
       this.blockId = blockId;
@@ -273,7 +272,7 @@ public class DatabaseManager implements Runnable {
     public PreparedBatch addBindings(PreparedBatch batch) {
       return batch
         .bind("uuid", uuid.toString())
-        .bind("lastaccess", lastaccess)
+        .bind("lastaccess", lastAccess)
         .bind("x", pos.getX()).bind("z", pos.getZ()).bind("y", pos.getY())
         .bind("player", accessingPlayer.toString())
         .bind("itemtype", blockId.toString())
@@ -283,12 +282,12 @@ public class DatabaseManager implements Runnable {
   }
 
   public static class ContainerTransaction extends QueueOperation {
-    private UUID playerId;
-    private UUID containerId;
-    private String date;
-    private Identifier itemtype;
-    private Integer itemcount;
-    private byte[] itemdata;
+    private final UUID playerId;
+    private final UUID containerId;
+    private final String date;
+    private final Identifier itemtype;
+    private final Integer itemcount;
+    private final byte[] itemdata;
 
     public int getPriority() { return 3; }
 
@@ -323,17 +322,17 @@ public class DatabaseManager implements Runnable {
   }
 
   public static class EntityKillUpdate extends QueueOperation {
-    private String name;
-    private String sourceName;
-    private UUID killerid;
-    private String date;
-    private BlockPos pos;
+    private final String name;
+    private final String sourceName;
+    private final UUID killerId;
+    private final String date;
+    private final BlockPos pos;
     public int getPriority() { return 2; }
 
-    public EntityKillUpdate(String name, String sourceName, UUID killerid, String date, BlockPos pos) {
+    public EntityKillUpdate(String name, String sourceName, UUID killerId, String date, BlockPos pos) {
       this.name = name;
       this.sourceName = sourceName;
-      this.killerid = killerid;
+      this.killerId = killerId;
       this.date = date;
       this.pos = pos;
     }
@@ -349,7 +348,7 @@ public class DatabaseManager implements Runnable {
       return batch
         .bind("name", name)
         .bind("source", sourceName)
-        .bind("killerid", killerid != null ? killerid.toString() : null)
+        .bind("killerid", killerId != null ? killerId.toString() : null)
         .bind("date", date)
         .bind("x", pos.getX()).bind("z", pos.getZ()).bind("y", pos.getY())
         .add();
@@ -357,10 +356,10 @@ public class DatabaseManager implements Runnable {
   }
 
   public static class MobGriefUpdate extends QueueOperation {
-    private UUID target;
-    private String date;
-    private Identifier entityType;
-    private BlockPos pos;
+    private final UUID target;
+    private final String date;
+    private final Identifier entityType;
+    private final BlockPos pos;
 
     public MobGriefUpdate(UUID target, String date, Identifier entityType, BlockPos pos) {
       this.target = target;

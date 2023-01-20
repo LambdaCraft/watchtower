@@ -3,6 +3,7 @@ package dev.lambdacraft.watchtower;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerListener;
@@ -10,7 +11,6 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Pair;
-import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.registry.Registry;
 
 public class ItemUtils {
@@ -47,7 +47,7 @@ public class ItemUtils {
     a.forEach((key, i) -> {
       Integer j = b.get(key);
       if (j == null) diff.put(key, i);
-      else if (i != j) diff.put(key, i - j);
+      else if (!Objects.equals(i, j)) diff.put(key, i - j);
     });
 
     b.forEach((key, j) -> {
@@ -62,12 +62,10 @@ public class ItemUtils {
   ) {
     Map<T, Integer> compressed = new HashMap<>();
 
-    transactions.forEach(pair -> {
-      compressed.put(
-        pair.getLeft(),
-        compressed.getOrDefault(pair.getLeft(), 0) + pair.getRight()
-      );
-    });
+    transactions.forEach(pair -> compressed.put(
+      pair.getLeft(),
+      compressed.getOrDefault(pair.getLeft(), 0) + pair.getRight()
+    ));
 
     return compressed;
   }
@@ -75,26 +73,17 @@ public class ItemUtils {
   public static Map<Item, Integer> itemStacksToTransactions(List<ItemStack> stacks) {
     Map<Item, Integer> transactions = new HashMap<>();
 
-    stacks.forEach(stack -> {
-      transactions.put(
-        stack.getItem(),
-        transactions.getOrDefault(stack.getItem(), 0) + stack.getCount()
-      );
-    });
+    stacks.forEach(stack -> transactions.put(
+      stack.getItem(),
+      transactions.getOrDefault(stack.getItem(), 0) + stack.getCount()
+    ));
 
     return transactions;
   }
 
-  public static void registerContentListener(ScreenHandler target) {
+  public static void registerContentListener(ScreenHandler target, ItemStack[] contents) {
     ScreenHandlerListener listener = new ScreenHandlerListener() {
-      private ItemStack[] beforeStacks;
-      @Override
-      public void onHandlerRegistered(ScreenHandler handler, DefaultedList<ItemStack> stacks) {
-        beforeStacks = new ItemStack[stacks.size()];
-        for (int i = 0; i < stacks.size(); i++) {
-          beforeStacks[i] = stacks.get(i).copy();
-        }
-      }
+      private ItemStack[] beforeStacks = contents;
 
       @Override
       public void onSlotUpdate(ScreenHandler handler, int slotId, ItemStack afterStack) {
@@ -104,7 +93,7 @@ public class ItemUtils {
 
         ItemStack beforeStack = beforeStacks[slotId];
         List<Pair<Item, Integer>> transactions = ((ITransactable)handler).getTransactions();
-        
+
         if (beforeStack.isItemEqual(afterStack) || beforeStack.isEmpty() || afterStack.isEmpty()) {
           // if same item then subtract and do transaction
           Item item = beforeStack.isEmpty() ? afterStack.getItem() : beforeStack.getItem();

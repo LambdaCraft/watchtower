@@ -14,13 +14,12 @@ import java.util.Set;
 
 import com.google.common.collect.Sets;
 
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.server.ServerStartCallback;
-import net.fabricmc.fabric.api.event.server.ServerStopCallback;
-import net.fabricmc.fabric.api.registry.CommandRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
@@ -31,7 +30,7 @@ public class ExampleMod implements ModInitializer {
 	public static Thread dmThread;
 
 	public Properties loadConfig() {
-		Path configPath = Paths.get(FabricLoader.getInstance().getConfigDirectory().toString(), "watchtower.properties");
+		Path configPath = Paths.get(FabricLoader.getInstance().getConfigDir().toString(), "watchtower.properties");
 		Properties props = new Properties();
 		try {
 			props.load(new FileInputStream(configPath.toString()));
@@ -60,12 +59,11 @@ public class ExampleMod implements ModInitializer {
 		CONFIG = props;
 		return CONFIG;
 	}
-
 	@Override
 	public void onInitialize() {
 		DatabaseManager dm = DatabaseManager.init(loadConfig());
 
-		ServerStartCallback.EVENT.register((server) -> {
+		ServerLifecycleEvents.SERVER_STARTED.register((server) -> {
 
 			HashSet<Identifier> dimensionIds = new HashSet<>();
 			server.getWorlds().forEach(world -> {
@@ -80,7 +78,7 @@ public class ExampleMod implements ModInitializer {
 				add(dimensionIds);
 			}};
 	
-			Set<Identifier> ids = idSets.stream().reduce((acc, s) -> Sets.union(acc, s)).orElse(new HashSet<Identifier>());
+			Set<Identifier> ids = idSets.stream().reduce(Sets::union).orElse(new HashSet<Identifier>());
 
 			ids.forEach(dm::queueRegistryUpdate);
 
@@ -88,9 +86,9 @@ public class ExampleMod implements ModInitializer {
 			ExampleMod.dmThread.start();
 		});
 
-    CommandRegistry.INSTANCE.register(false, dispatcher -> Commands.register(dispatcher));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> Commands.register(dispatcher));
 
-		ServerStopCallback.EVENT.register((server) -> {
+		ServerLifecycleEvents.SERVER_STOPPING.register((server) -> {
 			dm.stop();
 			for (int i = 1; i <= 2 * 30 && ExampleMod.dmThread.isAlive(); ++i) {
 				try {
