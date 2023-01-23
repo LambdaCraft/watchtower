@@ -338,10 +338,8 @@ public class DatabaseManager implements Runnable {
     }
     public PreparedBatch prepareBatch(Handle handle) {
       return handle.prepareBatch(String.join("",
-        "INSERT INTO killed_entities (name, source, killerid, date, x, y, z) ",
-        "VALUES (:name, :source, ",
-          "IF(:killerid IS NULL, NULL, (SELECT id FROM players WHERE uuid=:killerid)), ",
-          ":date, :x, :y, :z)"
+        "INSERT INTO killed_entities (name, source, date, x, y, z) ",
+        "VALUES (:name, :source, :date, :x, :y, :z)"
       ));
     }
     public PreparedBatch addBindings(PreparedBatch batch) {
