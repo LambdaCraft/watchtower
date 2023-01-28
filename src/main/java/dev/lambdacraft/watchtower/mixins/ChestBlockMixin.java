@@ -6,6 +6,9 @@ import java.util.function.Supplier;
 
 import java.util.Optional;
 
+import net.minecraft.inventory.DoubleInventory;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -33,21 +36,35 @@ import net.minecraft.world.World;
 
 @Mixin(ChestBlock.class)
 public abstract class ChestBlockMixin extends AbstractChestBlock<ChestBlockEntity> implements IChestBlockUUID {
-  protected ChestBlockMixin(final Settings settings,
-      final Supplier<BlockEntityType<? extends ChestBlockEntity>> entityTypeSupplier) {
+    protected ChestBlockMixin(final Settings settings,
+                              final Supplier<BlockEntityType<? extends ChestBlockEntity>> entityTypeSupplier) {
     super(settings, entityTypeSupplier);
   }
+
+  private static final DoubleBlockProperties.PropertyRetriever<ChestBlockEntity, Optional<Inventory>> INVENTORY_RETRIEVER = new DoubleBlockProperties.PropertyRetriever<ChestBlockEntity, Optional<Inventory>>() {
+      public Optional<Inventory> getFromBoth(ChestBlockEntity chestBlockEntity, ChestBlockEntity chestBlockEntity2) {
+          return Optional.of(new DoubleInventory(chestBlockEntity, chestBlockEntity2));
+      }
+
+      public Optional<Inventory> getFrom(ChestBlockEntity chestBlockEntity) {
+          return Optional.of(chestBlockEntity);
+      }
+
+      public Optional<Inventory> getFallback() {
+          return Optional.empty();
+      }
+  };
 
   /** Complicated double chest ID retrieving logic */
   private final DoubleBlockProperties.PropertyRetriever<ChestBlockEntity, Optional<UUID>> UUID_RETRIEVER = 
     new DoubleBlockProperties.PropertyRetriever<ChestBlockEntity, Optional<UUID>>() {
       public Optional<UUID> getFromBoth(final ChestBlockEntity left, final ChestBlockEntity right) {
-        final IWatchTowerId chestBE = (IWatchTowerId)(Object)left;
+        final IWatchTowerId chestBE = (IWatchTowerId) left;
         return Optional.of(chestBE.getWatchTowerId());
       }
 
       public Optional<UUID> getFrom(final ChestBlockEntity chestBlockEntity) {
-        final IWatchTowerId chestBE = (IWatchTowerId)(Object)chestBlockEntity;
+        final IWatchTowerId chestBE = (IWatchTowerId) chestBlockEntity;
         final UUID uuid = chestBE.getWatchTowerId();
 
         return Optional.of(uuid);
@@ -61,9 +78,7 @@ public abstract class ChestBlockMixin extends AbstractChestBlock<ChestBlockEntit
   public DoubleBlockProperties.PropertySource<? extends ChestBlockEntity> getSource(BlockState state, World world, BlockPos pos, boolean ignoreBlocked) {
     BiPredicate<WorldAccess, BlockPos> biPredicate2;
     if (ignoreBlocked) {
-       biPredicate2 = (worldAccess, blockPos) -> {
-          return false;
-       };
+       biPredicate2 = (worldAccess, blockPos) -> false;
     } else {
        biPredicate2 = ChestBlock::isChestBlocked;
     }
@@ -89,31 +104,14 @@ public abstract class ChestBlockMixin extends AbstractChestBlock<ChestBlockEntit
         DatabaseManager.getSingleton().queueOp(new DatabaseManager.ContainerUpdate(
           chestWId, Registry.BLOCK.getId(this), pos, player.getUuid(), DatabaseManager.getTime(), dimension
         ));
-        ItemUtils.registerContentListener(player.currentScreenHandler);
-      });;
+
+        Inventory beforeInv = getBlockEntitySource(state, world, pos, true).apply(INVENTORY_RETRIEVER).orElse(null);
+        ItemStack[] before = new ItemStack[beforeInv.size()];
+        for (int i = 0; i < beforeInv.size(); i++) {
+            before[i] = beforeInv.getStack(i).copy();
+        }
+
+        ItemUtils.registerContentListener(player.currentScreenHandler, before);
+      });
   }
-
-  // Logged by block breaker anyway
-  // @Inject(
-  //   at = @At(value = "INVOKE", target = "net.minecraft.util.ItemScatterer.spawn"),
-  //   method = "onBlockRemoved")
-  // public void onBlockRemoved(final BlockState state, final World world, final BlockPos pos, final BlockState newState, final boolean moved, final CallbackInfo info) {
-  //   // PropertySource this.getSource(state, world, pos, false);
-  //   final UUID sourceId = this.getWatchTowerIdAt(state, world, pos);
-  //   final IWatchTowerId chestBE = (IWatchTowerId)world.getBlockEntity(pos);
-  //   final UUID uuid = chestBE.getWatchTowerId();
-  //   final List<ItemStack> beforeItems = new ArrayList<ItemStack>();
-  //   final List<ItemStack> afterItems = new ArrayList<ItemStack>();
-  //   Inventory afterInv = (Inventory)world.getBlockEntity(pos);
-
-  //   final Inventory beforeInv = ChestBlock.getInventory((ChestBlock)(Object)this, state, world, pos, false);
-  //   for (int i = 0; i < beforeInv.getInvSize(); i++) {
-  //     beforeItems.add(beforeInv.getInvStack(i));
-  //   }
-  //   for (int i = 0; i < afterInv.getInvSize(); i++) {
-  //     afterItems.add(afterInv.getInvStack(i));
-  //   }
-
-  //   System.out.println("REMOVED " + uuid + " SOURCE ID: " + sourceId + " before: " + beforeInv + " after: " + afterInv);
-  // }
 }

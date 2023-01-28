@@ -1,5 +1,7 @@
 package dev.lambdacraft.watchtower.mixins;
 
+import dev.lambdacraft.watchtower.beans.Placement;
+import dev.lambdacraft.watchtower.beans.Transaction;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.AbstractBlock;
@@ -7,7 +9,6 @@ import net.minecraft.block.ChestBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -32,9 +33,11 @@ import dev.lambdacraft.watchtower.IWatchTowerId;
 
 @Mixin(AbstractBlock.AbstractBlockState.class)
 public class BlockInteractionMixin {
-  private static boolean holdingInHand(PlayerEntity player, Item item) {
-      return !player.getMainHandStack().isEmpty() && player.getMainHandStack().getItem() == item;
+  private static boolean isHoldingSelectorTool(PlayerEntity player) {
+      return !player.getMainHandStack().isEmpty() && player.getMainHandStack().getItem() == Items.DIAMOND_SWORD;
   }
+
+  private long lastClick = 0;
 
   /**
    * Check player interaction with blocks and item held in hand for logging query
@@ -45,11 +48,16 @@ public class BlockInteractionMixin {
     World world, PlayerEntity player, Hand hand, BlockHitResult hit,
     CallbackInfoReturnable<ActionResult> ret
   ) {
+    if (lastClick + 1000 > System.currentTimeMillis()) {
+      return;
+    }
+    lastClick = System.currentTimeMillis();
+
     Block block = ((BlockState)(Object)this).getBlock();
     BlockPos pos = hit.getBlockPos();
     BlockState state = world.getBlockState(pos);
     if (
-      !holdingInHand(player, Items.DIAMOND_SWORD) ||
+      !isHoldingSelectorTool(player) ||
       !world.getServer().getPlayerManager().isOperator(player.getGameProfile()) ||
       !Commands.hasToolEnabled(player)
     ) {
@@ -62,7 +70,7 @@ public class BlockInteractionMixin {
     DatabaseManager dm = DatabaseManager.getSingleton();
     Identifier dimension = world.getRegistryKey().getValue();
 
-    if (be != null && be instanceof LockableContainerBlockEntity) {
+    if (be instanceof LockableContainerBlockEntity) {
       Optional<UUID> opt;
       if (targetBlock instanceof ChestBlock) {
         opt = ((IChestBlockUUID)targetBlock).getWatchTowerIdAt(state, world, pos);
@@ -71,9 +79,7 @@ public class BlockInteractionMixin {
       }
       opt.ifPresent(uuid -> {
         dm.getTransactionsFromUUID(uuid, 10).stream()
-          .map(t -> {
-            return t.getText();
-          })
+          .map(Transaction::getText)
           .reduce((t1, t2) -> Chat.concat("\n", t1, t2))
           .ifPresent(msg -> {
             Chat.send(player, Chat.concat("\n", Chat.text("Transaction history"), msg));
@@ -82,7 +88,7 @@ public class BlockInteractionMixin {
     }
 
     dm.getPlacementsAt(dimension, pos, 10).stream()
-      .map(p -> p.getText())
+      .map(Placement::getText)
       .reduce((p1, p2) -> Chat.concat("\n", p1, p2))
       .ifPresent(msg -> {
         Chat.send(player, Chat.concat("\n", Chat.text("Placement history"), msg));

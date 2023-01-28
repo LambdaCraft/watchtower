@@ -16,7 +16,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.World;
-import net.minecraft.world.dimension.DimensionType;
 
 @Mixin(BlockItem.class)
 public abstract class BlockItemMixin extends Item {
@@ -44,10 +43,6 @@ public abstract class BlockItemMixin extends Item {
       Identifier dimension = world.getRegistryKey().getValue();
   
       if (player == null) return;
-      // if (
-      //   bs.getBlock() == Blocks.D &&
-      //   world.getServer().getPlayerManager().isOperator(player.getGameProfile())
-      // ) return;
   
       DatabaseManager.getSingleton().queueOp(new DatabaseManager.BlockUpdate(player.getUuid(), id, true, pos, dimension));
     } catch (Exception e) {

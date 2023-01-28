@@ -76,7 +76,7 @@ public class Transaction {
         count < 0 ? "took" : "put",
         count < 0 ? Formatting.DARK_RED : Formatting.GREEN
       ),
-      format(Integer.valueOf(Math.abs(count))),
+      format(Math.abs(count)),
       format(item)
     );
   }

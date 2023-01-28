@@ -18,7 +18,7 @@ public abstract class PlayerEventsMixin {
   public void remove(ServerPlayerEntity player, CallbackInfo info) {
     DatabaseManager.getSingleton().queuePlayerUpdate(new Player(
       player.getUuid(),
-      player.getName().asString(),
+      player.getName().getString(),
       DatabaseManager.getTime()
     ));
   }
@@ -29,7 +29,7 @@ public abstract class PlayerEventsMixin {
   ) {
     DatabaseManager.getSingleton().queuePlayerUpdate(new Player(
       player.getUuid(),
-      player.getName().asString(),
+      player.getName().getString(),
       DatabaseManager.getTime()
     ));
   }
